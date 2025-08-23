@@ -1,0 +1,3 @@
+airflow/pv/logs
+airflow/pv/dags/__pycache__
+secret.yaml

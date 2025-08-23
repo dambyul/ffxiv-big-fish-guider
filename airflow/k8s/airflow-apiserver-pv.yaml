@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    service: airflow-apiserver-pv
+  name: airflow-apiserver-pv
+spec:
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /home/ubuntu/project/ffxiv-discord-fish-bot/airflow/pv/dags
+  storageClassName: local-path

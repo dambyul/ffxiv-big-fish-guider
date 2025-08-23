@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: fish
+  labels:
+    service: airflow-dagprocessor
+  name: airflow-dagprocessor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: airflow-dagprocessor
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: airflow-dagprocessor
+    spec:
+      containers:
+        - args:
+            - dag-processor
+          image: dambyul/airflow:fish
+          imagePullPolicy: Always
+          name: airflow-dagprocessor
+          envFrom:
+            - configMapRef:
+                name: airflow
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - >
+                  airflow jobs check --job-type DagProcessorJob --hostname $(hostname) || exit 0
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+      restartPolicy: Always
+      volumes:
+        - name: dags
+          persistentVolumeClaim:
+            claimName: airflow-apiserver-pvc
+        - name: logs
+          persistentVolumeClaim:
+            claimName: airflow-logs-pvc

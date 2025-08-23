@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: fish
+  labels:
+    service: airflow-postgres
+  name: airflow-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: airflow-postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: airflow-postgres
+    spec:
+      containers:
+        - env:
+            - name: POSTGRES_DB
+              value: airflow
+            - name: POSTGRES_PASSWORD
+              value: airflow
+            - name: POSTGRES_USER
+              value: airflow
+          image: postgres:latest
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - airflow
+            failureThreshold: 5
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          name: airflow-postgres
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-db-volume
+      restartPolicy: Always
+      volumes:
+        - name: postgres-db-volume
+          persistentVolumeClaim:
+            claimName: postgres-db-volume

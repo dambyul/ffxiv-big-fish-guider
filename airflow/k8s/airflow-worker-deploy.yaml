@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: fish
+  labels:
+    service: airflow-worker
+  name: airflow-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: airflow-worker
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: airflow-worker
+    spec:
+      containers:
+        - name: airflow-worker
+          image: dambyul/airflow:fish
+          imagePullPolicy: Always
+          args:
+            - celery
+            - worker
+          envFrom:
+            - configMapRef:
+                name: airflow
+          env:
+            - name: DUMB_INIT_SETSID
+              value: "0"
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - >
+                  celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$(hostname)" ||
+                  celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$(hostname)"
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: dags-pvc
+              mountPath: /opt/airflow/dags
+            - name: logs-pvc
+              mountPath: /opt/airflow/logs
+      restartPolicy: Always
+      volumes:
+        - name: dags-pvc
+          persistentVolumeClaim:
+            claimName: airflow-apiserver-pvc
+        - name: logs-pvc
+          persistentVolumeClaim:
+            claimName: airflow-logs-pvc
