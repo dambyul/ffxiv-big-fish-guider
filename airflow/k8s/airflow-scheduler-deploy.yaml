@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: fish
+  labels:
+    service: airflow-scheduler
+  name: airflow-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: airflow-scheduler
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: airflow-scheduler
+    spec:
+      containers:
+        - name: airflow-scheduler
+          image: dambyul/airflow:fish
+          imagePullPolicy: Always
+          args:
+            - scheduler
+          envFrom:
+            - configMapRef:
+                name: airflow
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - --fail
+                - http://localhost:8974/health
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+      restartPolicy: Always
+      volumes:
+        - name: dags
+          persistentVolumeClaim:
+            claimName: airflow-apiserver-pvc
+        - name: logs
+          persistentVolumeClaim:
+            claimName: airflow-logs-pvc

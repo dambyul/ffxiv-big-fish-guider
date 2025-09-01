@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: fish
+  labels:
+    service: airflow-migrate
+  name: airflow-migrate
+spec:
+  template:
+    spec:
+      containers:
+        - name: airflow-migrate
+          image: dambyul/airflow:fish
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              airflow db migrate
+              airflow users create \
+                --username "${AIRFLOW_USERNAME}" \
+                --password "${AIRFLOW_PASSWORD}" \
+                --firstname "${AIRFLOW_FIRSTNAME}" \
+                --lastname "${AIRFLOW_LASTNAME}" \
+                --role Admin \
+                --email "${AIRFLOW_EMAIL}"
+              exec airflow version
+          envFrom:
+            - configMapRef:
+                name: airflow
+          env:
+            - name: AIRFLOW_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-admin
+                  key: username
+            - name: AIRFLOW_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-admin
+                  key: password
+            - name: AIRFLOW_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-admin
+                  key: email
+            - name: AIRFLOW_FIRSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-admin
+                  key: firstname
+            - name: AIRFLOW_LASTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-admin
+                  key: lastname
+      restartPolicy: Never

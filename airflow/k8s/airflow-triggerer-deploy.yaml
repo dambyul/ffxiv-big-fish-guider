@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: fish
+  labels:
+    service: airflow-triggerer
+  name: airflow-triggerer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: airflow-triggerer
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: airflow-triggerer
+    spec:
+      containers:
+        - name: airflow-triggerer
+          image: dambyul/airflow:fish
+          imagePullPolicy: Always
+          args:
+            - triggerer
+          envFrom:
+            - configMapRef:
+                name: airflow
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - >
+                  airflow jobs check --job-type TriggererJob --hostname $(hostname) || exit 0
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+      restartPolicy: Always

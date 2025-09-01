@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: fish
+  labels:
+    service: airflow-apiserver
+  name: airflow-apiserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: airflow-apiserver
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: airflow-apiserver
+    spec:
+      containers:
+        - args:
+            - api-server
+          image: dambyul/airflow:fish
+          imagePullPolicy: Always
+          name: airflow-apiserver
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: airflow
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - --fail
+                - http://localhost:8080/api/v2/version
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+      restartPolicy: Always
+      volumes:
+        - name: dags
+          persistentVolumeClaim:
+            claimName: airflow-apiserver-pvc
+        - name: logs
+          persistentVolumeClaim:
+            claimName: airflow-logs-pvc
